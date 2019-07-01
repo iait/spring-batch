@@ -2,6 +2,7 @@ package com.iait.springbatchrest.services;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
@@ -50,5 +51,19 @@ public class BeneficiarioService {
         entity.setCuil(dto.getCuil());
         entity.setFechaNacimiento(dto.getFechaNacimiento());
         return beneficiarioRepository.save(entity);
+    }
+
+    @Transactional
+    public List<BeneficiarioEntity> alta(List<? extends BeneficiarioEntity> entities) {
+        JPAQueryFactory queryFactory = new JPAQueryFactory(em);
+        QBeneficiarioEntity q = QBeneficiarioEntity.beneficiarioEntity;
+        return entities.stream().map(entity -> {
+            Long maxId = queryFactory.select(q.id.max()).from(q).fetchFirst();
+            if (maxId == null) {
+                maxId = 0L;
+            }
+            entity.setId(maxId + 1);
+            return beneficiarioRepository.save(entity);
+        }).collect(Collectors.toList());
     }
 }

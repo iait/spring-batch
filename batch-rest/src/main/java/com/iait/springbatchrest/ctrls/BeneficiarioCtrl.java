@@ -23,18 +23,29 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.iait.springbatchrest.elements.BeneficiarioElement;
 import com.iait.springbatchrest.entities.BeneficiarioEntity;
+import com.iait.springbatchrest.items.inputs.BeneficiarioInput;
 import com.iait.springbatchrest.payloads.requests.BeneficiarioRequest;
 import com.iait.springbatchrest.payloads.responses.BeneficiarioResponse;
+import com.iait.springbatchrest.processors.BeneficiarioProcessor;
 import com.iait.springbatchrest.readers.BeneficiarioReader;
 import com.iait.springbatchrest.services.BeneficiarioService;
+import com.iait.springbatchrest.writers.BeneficiarioWriter;
 
 @Controller
 public class BeneficiarioCtrl {
 
     @Autowired
     private BeneficiarioService beneficiarioService;
+
+    @Autowired
+    private BeneficiarioReader beneficiarioReader;
+
+    @Autowired
+    private BeneficiarioProcessor beneficiarioProcessor;
+
+    @Autowired
+    private BeneficiarioWriter beneficiarioWriter;
 
     @GetMapping(path = "/api/beneficiarios")
     public ResponseEntity<List<BeneficiarioResponse>> buscarTodos() {
@@ -82,7 +93,9 @@ public class BeneficiarioCtrl {
         }
 
         FileSystemResource resource = new FileSystemResource(tmpFile);
-        ItemReader<BeneficiarioElement> reader = new BeneficiarioReader(resource);
+        beneficiarioReader.setResource(resource);
+
+        
 
         return ResponseEntity.ok().build();
     }

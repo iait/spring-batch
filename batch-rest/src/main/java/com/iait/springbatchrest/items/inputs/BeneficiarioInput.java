@@ -1,6 +1,6 @@
-package com.iait.springbatchrest.elements;
+package com.iait.springbatchrest.items.inputs;
 
-public class BeneficiarioElement {
+public class BeneficiarioInput {
 
     private String nombreCompleto;
 
@@ -8,7 +8,7 @@ public class BeneficiarioElement {
 
     private String fechaNacimiento;
 
-    public BeneficiarioElement() {}
+    public BeneficiarioInput() {}
 
     public String getNombreCompleto() {
         return nombreCompleto;
