@@ -4,17 +4,15 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.springframework.batch.core.ExitStatus;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.JobExecution;
-import org.springframework.batch.core.JobParameter;
 import org.springframework.batch.core.JobParameters;
+import org.springframework.batch.core.JobParametersBuilder;
 import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -92,12 +90,12 @@ public class BeneficiarioCtrl {
             tmpFileStream.write(padron.getBytes());
         }
 
-        JobParameter resourceLocation = new JobParameter(tmpFile.getAbsolutePath());
-        Map<String, JobParameter> paramsMap = new HashMap<>();
-        paramsMap.put("resourceLocation", resourceLocation);
-        JobExecution execution = jobLauncher.run(beneficiarioJob, new JobParameters(paramsMap));
+        JobParameters params = new JobParametersBuilder()
+                .addString("resourceLocation", tmpFile.getAbsolutePath())
+                .toJobParameters(); 
+        JobExecution execution = jobLauncher.run(beneficiarioJob, params);
         ExitStatus status = execution.getExitStatus();
 
-        return ResponseEntity.ok(status.getExitDescription());
+        return ResponseEntity.ok(status.getExitCode());
     }
 }
