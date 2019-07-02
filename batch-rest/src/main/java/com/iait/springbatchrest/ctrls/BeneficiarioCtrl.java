@@ -4,22 +4,20 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.springframework.batch.core.ExitStatus;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.JobExecution;
+import org.springframework.batch.core.JobParameter;
 import org.springframework.batch.core.JobParameters;
-import org.springframework.batch.core.Step;
-import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
-import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
-import org.springframework.batch.core.launch.support.SimpleJobLauncher;
-import org.springframework.batch.core.step.builder.SimpleStepBuilder;
+import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.FileSystemResource;
-import org.springframework.core.task.SyncTaskExecutor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.util.MimeType;
@@ -31,15 +29,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.iait.springbatchrest.cfg.BatchConfig;
 import com.iait.springbatchrest.entities.BeneficiarioEntity;
-import com.iait.springbatchrest.items.inputs.BeneficiarioInput;
 import com.iait.springbatchrest.payloads.requests.BeneficiarioRequest;
 import com.iait.springbatchrest.payloads.responses.BeneficiarioResponse;
-import com.iait.springbatchrest.processors.BeneficiarioProcessor;
-import com.iait.springbatchrest.readers.BeneficiarioReader;
 import com.iait.springbatchrest.services.BeneficiarioService;
-import com.iait.springbatchrest.writers.BeneficiarioWriter;
 
 @Controller
 public class BeneficiarioCtrl {
@@ -48,22 +41,11 @@ public class BeneficiarioCtrl {
     private BeneficiarioService beneficiarioService;
 
     @Autowired
-    private JobBuilderFactory jobBuilderFactory;
+    @Qualifier("beneficiarioJob")
+    private Job beneficiarioJob;
 
     @Autowired
-    private StepBuilderFactory stepBuilderFactory;
-
-    @Autowired
-    private BeneficiarioReader beneficiarioReader;
-
-    @Autowired
-    private BeneficiarioProcessor beneficiarioProcessor;
-
-    @Autowired
-    private BeneficiarioWriter beneficiarioWriter;
-
-    @Autowired
-    private BatchConfig batchCon;
+    private JobLauncher jobLauncher;
 
     @GetMapping(path = "/api/beneficiarios")
     public ResponseEntity<List<BeneficiarioResponse>> buscarTodos() {
@@ -110,22 +92,10 @@ public class BeneficiarioCtrl {
             tmpFileStream.write(padron.getBytes());
         }
 
-        FileSystemResource resource = new FileSystemResource(tmpFile);
-        beneficiarioReader.setResource(resource);
-
-        SimpleStepBuilder<BeneficiarioInput, BeneficiarioEntity> stepBuilder = 
-                stepBuilderFactory.get("step").chunk(2);
-        Step step = stepBuilder
-                .reader(beneficiarioReader)
-                .processor(beneficiarioProcessor)
-                .writer(beneficiarioWriter)
-                .build();
-        Job job = jobBuilderFactory.get("beneficiarioJob").start(step).build();
-
-        SimpleJobLauncher jobLauncher = new SimpleJobLauncher();
-        jobLauncher.setJobRepository(batchCon.getJobRepository());
-        jobLauncher.setTaskExecutor(new SyncTaskExecutor());
-        JobExecution execution = jobLauncher.run(job, new JobParameters());
+        JobParameter resourceLocation = new JobParameter(tmpFile.getAbsolutePath());
+        Map<String, JobParameter> paramsMap = new HashMap<>();
+        paramsMap.put("resourceLocation", resourceLocation);
+        JobExecution execution = jobLauncher.run(beneficiarioJob, new JobParameters(paramsMap));
         ExitStatus status = execution.getExitStatus();
 
         return ResponseEntity.ok(status.getExitDescription());
