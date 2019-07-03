@@ -2,9 +2,9 @@ package com.iait.springbatchrest.services;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 import javax.persistence.EntityManager;
+import javax.persistence.EntityManagerFactory;
 import javax.persistence.PersistenceContext;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,6 +25,9 @@ public class BeneficiarioService {
 
     @PersistenceContext
     private EntityManager em;
+
+    @Autowired
+    private EntityManagerFactory emf;
 
     @Transactional(readOnly = true)
     public Optional<BeneficiarioEntity> buscarPorId(Long id) {
@@ -54,16 +57,19 @@ public class BeneficiarioService {
     }
 
     @Transactional
-    public List<BeneficiarioEntity> alta(List<? extends BeneficiarioEntity> entities) {
+    public void alta(List<? extends BeneficiarioEntity> entities) {
+        EntityManager em = emf.createEntityManager();
+        em.getTransaction().begin();
         JPAQueryFactory queryFactory = new JPAQueryFactory(em);
         QBeneficiarioEntity q = QBeneficiarioEntity.beneficiarioEntity;
-        return entities.stream().map(entity -> {
+        for (BeneficiarioEntity entity : entities) {
             Long maxId = queryFactory.select(q.id.max()).from(q).fetchFirst();
             if (maxId == null) {
                 maxId = 0L;
             }
             entity.setId(maxId + 1);
-            return beneficiarioRepository.save(entity);
-        }).collect(Collectors.toList());
+            em.persist(entity);
+        }
+        em.getTransaction().commit();
     }
 }
