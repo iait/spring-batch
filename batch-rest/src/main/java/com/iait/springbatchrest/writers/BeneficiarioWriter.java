@@ -25,10 +25,5 @@ public class BeneficiarioWriter implements ItemWriter<BeneficiarioEntity> {
         LOG.debug("Escribiendo beneficiarios...");
         TimeUnit.SECONDS.sleep(2L);
         beneficiarioService.alta(items);
-        BeneficiarioEntity test = new BeneficiarioEntity();
-        test.setId(3L);
-        if (items.contains(test)) {
-            throw new NullPointerException();
-        }
     }
 }
