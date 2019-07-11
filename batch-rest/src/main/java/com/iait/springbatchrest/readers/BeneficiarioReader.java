@@ -42,6 +42,7 @@ public class BeneficiarioReader extends FlatFileItemReader<BeneficiarioInput> {
         lineMapper.setLineTokenizer(tokenizer);
         lineMapper.setFieldSetMapper(fieldSetMapper);
         setLineMapper(lineMapper);
+
     }
 
     @Override

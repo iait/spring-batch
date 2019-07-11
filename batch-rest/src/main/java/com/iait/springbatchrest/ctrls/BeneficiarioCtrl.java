@@ -2,17 +2,21 @@ package com.iait.springbatchrest.ctrls;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import org.springframework.batch.core.ExitStatus;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.core.JobParameters;
 import org.springframework.batch.core.JobParametersBuilder;
+import org.springframework.batch.core.explore.JobExplorer;
 import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -30,6 +34,8 @@ import org.springframework.web.multipart.MultipartFile;
 import com.iait.springbatchrest.entities.BeneficiarioEntity;
 import com.iait.springbatchrest.payloads.requests.BeneficiarioRequest;
 import com.iait.springbatchrest.payloads.responses.BeneficiarioResponse;
+import com.iait.springbatchrest.payloads.responses.ExecutionErrorResponse;
+import com.iait.springbatchrest.payloads.responses.ExecutionResponse;
 import com.iait.springbatchrest.services.BeneficiarioService;
 
 @Controller
@@ -44,6 +50,45 @@ public class BeneficiarioCtrl {
 
     @Autowired
     private JobLauncher jobLauncher;
+
+    @Autowired 
+    private JobExplorer jobExplorer;
+
+    @GetMapping(path = "/api/beneficiarios/padron/{id}")
+    public ResponseEntity<ExecutionResponse> padronEstado(
+            @PathVariable(name = "id") Long id) {
+
+        JobExecution execution = jobExplorer.getJobExecution(id);
+        ExecutionResponse response = new ExecutionResponse();
+        String nombreArchivo = execution.getJobParameters().getString("originalFileName");
+        response.setNombreArchivo(nombreArchivo);
+        response.setNombreTarea(execution.getJobInstance().getJobName());
+        response.setEstado(execution.getStatus().name());
+
+        LocalDateTime fechaInicio = execution.getStartTime().toInstant()
+                .atZone(ZoneId.systemDefault()).toLocalDateTime();
+        response.setFechaInicio(fechaInicio);
+        LocalDateTime ultimaActualizacion = execution.getLastUpdated().toInstant()
+                .atZone(ZoneId.systemDefault()).toLocalDateTime();
+        response.setUltimaActualizacion(ultimaActualizacion);
+        LocalDateTime fechaFinalizacion = execution.getEndTime() == null 
+                ? null 
+                : execution.getEndTime().toInstant().atZone(ZoneId.systemDefault())
+                        .toLocalDateTime();
+        response.setFechaFinalizacion(fechaFinalizacion);
+
+        List<ExecutionErrorResponse> errores = execution.getAllFailureExceptions().stream()
+                .map(t -> {
+                    StringWriter sw = new StringWriter();
+                    t.printStackTrace(new PrintWriter(sw));
+                    ExecutionErrorResponse errorResponse = new ExecutionErrorResponse();
+                    errorResponse.setStackTrace(sw.toString());
+                    return errorResponse;
+                }).collect(Collectors.toList());
+        response.setErrores(errores);
+
+        return ResponseEntity.ok(response);
+    }
 
     @GetMapping(path = "/api/beneficiarios")
     public ResponseEntity<List<BeneficiarioResponse>> buscarTodos() {
@@ -72,7 +117,7 @@ public class BeneficiarioCtrl {
     }
 
     @PostMapping(path = "/api/beneficiarios/padron")
-    public ResponseEntity<String> alta(@RequestParam(name = "padron") MultipartFile padron) 
+    public ResponseEntity<Long> alta(@RequestParam(name = "padron") MultipartFile padron) 
             throws Exception {
 
         String contentType = padron.getContentType();
@@ -92,10 +137,10 @@ public class BeneficiarioCtrl {
 
         JobParameters params = new JobParametersBuilder()
                 .addString("resourceLocation", tmpFile.getAbsolutePath())
+                .addString("originalFileName", fileName)
                 .toJobParameters(); 
         JobExecution execution = jobLauncher.run(beneficiarioJob, params);
-        ExitStatus status = execution.getExitStatus();
 
-        return ResponseEntity.ok(status.getExitCode());
+        return ResponseEntity.ok(execution.getId());
     }
 }
